@@ -186,6 +186,8 @@ ssize_t qemu_send_packet_async(NetClientState *nc, const uint8_t *buf,
                                int size, NetPacketSent *sent_cb);
 void qemu_purge_queued_packets(NetClientState *nc);
 void qemu_flush_queued_packets(NetClientState *nc);
+/* Optional retired is sticky-OR, as in qemu_net_queue_flush_progress(). */
+void qemu_flush_queued_packets_progress(NetClientState *nc, bool *retired);
 void qemu_flush_or_purge_queued_packets(NetClientState *nc, bool purge);
 void qemu_set_info_str(NetClientState *nc,
                        const char *fmt, ...) G_GNUC_PRINTF(2, 3);

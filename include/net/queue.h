@@ -79,5 +79,10 @@ ssize_t qemu_net_queue_send_iov(NetQueue *queue,
 
 void qemu_net_queue_purge(NetQueue *queue, NetClientState *from);
 bool qemu_net_queue_flush(NetQueue *queue);
+/*
+ * Same empty-queue result; sticky-OR into optional retired on nonzero delivery
+ * of a queued packet, including errors, before invoking its sent callback.
+ */
+bool qemu_net_queue_flush_progress(NetQueue *queue, bool *retired);
 
 #endif /* QEMU_NET_QUEUE_H */

@@ -1614,6 +1614,31 @@ static void virtio_net_handle_rx(VirtIODevice *vdev, VirtQueue *vq)
     int queue_index = vq2q(virtio_get_queue_index(vq));
 
     qemu_flush_queued_packets(qemu_get_subqueue(n->nic, queue_index));
+
+    /*
+     * Software RSS leaves backpressure on the ingress NetClient, not the
+     * target RX queue. A later delivery (even a drop/error) can disable the
+     * notification armed by an earlier blocked head targeting the same queue.
+     * Retry complete passes, including the kicked queue, until none retires a
+     * packet. The final pass leaves each blocked head's notification armed
+     * with the availability recheck in virtio_net_has_buffers().
+     * Experimental: assumes RAM-backed guest buffers and no nested RX kicks.
+     */
+    if (n->rss_data.enabled && n->rss_data.enabled_software_rss &&
+        n->rss_data.redirect) {
+        bool retired;
+
+        do {
+            retired = false;
+            for (int i = 0; i < n->curr_queue_pairs; i++) {
+                NetClientState *nc = qemu_get_subqueue(n->nic, i);
+
+                if (nc->receive_disabled) {
+                    qemu_flush_queued_packets_progress(nc, &retired);
+                }
+            }
+        } while (retired);
+    }
 }
 
 static bool virtio_net_can_receive(NetClientState *nc)

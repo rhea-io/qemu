@@ -270,7 +270,7 @@ void qemu_net_queue_purge(NetQueue *queue, NetClientState *from)
     }
 }
 
-bool qemu_net_queue_flush(NetQueue *queue)
+bool qemu_net_queue_flush_progress(NetQueue *queue, bool *retired)
 {
     if (queue->delivering)
         return false;
@@ -294,6 +294,9 @@ bool qemu_net_queue_flush(NetQueue *queue)
             return false;
         }
 
+        if (retired) {
+            *retired = true;
+        }
         if (packet->sent_cb) {
             packet->sent_cb(packet->sender, ret);
         }
@@ -301,4 +304,9 @@ bool qemu_net_queue_flush(NetQueue *queue)
         g_free(packet);
     }
     return true;
+}
+
+bool qemu_net_queue_flush(NetQueue *queue)
+{
+    return qemu_net_queue_flush_progress(queue, NULL);
 }

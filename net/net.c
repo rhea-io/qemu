@@ -680,16 +680,18 @@ void qemu_purge_queued_packets(NetClientState *nc)
     qemu_net_queue_purge(nc->peer->incoming_queue, nc);
 }
 
-void qemu_flush_or_purge_queued_packets(NetClientState *nc, bool purge)
+static void qemu_flush_or_purge_queued_packets_progress(NetClientState *nc,
+                                                      bool purge,
+                                                      bool *retired)
 {
     nc->receive_disabled = 0;
 
     if (nc->peer && nc->peer->info->type == NET_CLIENT_DRIVER_HUBPORT) {
-        if (net_hub_flush(nc->peer)) {
+        if (net_hub_flush_progress(nc->peer, retired)) {
             qemu_notify_event();
         }
     }
-    if (qemu_net_queue_flush(nc->incoming_queue)) {
+    if (qemu_net_queue_flush_progress(nc->incoming_queue, retired)) {
         /* We emptied the queue successfully, signal to the IO thread to repoll
          * the file descriptor (for tap, for example).
          */
@@ -700,9 +702,19 @@ void qemu_flush_or_purge_queued_packets(NetClientState *nc, bool purge)
     }
 }
 
+void qemu_flush_or_purge_queued_packets(NetClientState *nc, bool purge)
+{
+    qemu_flush_or_purge_queued_packets_progress(nc, purge, NULL);
+}
+
+void qemu_flush_queued_packets_progress(NetClientState *nc, bool *retired)
+{
+    qemu_flush_or_purge_queued_packets_progress(nc, false, retired);
+}
+
 void qemu_flush_queued_packets(NetClientState *nc)
 {
-    qemu_flush_or_purge_queued_packets(nc, false);
+    qemu_flush_queued_packets_progress(nc, NULL);
 }
 
 static ssize_t qemu_send_packet_async_with_flags(NetClientState *sender,
